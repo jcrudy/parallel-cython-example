@@ -17,9 +17,11 @@ numpy_include = numpy.get_include()
 if cythonize_switch:
     from Cython.Distutils import build_ext
     from Cython.Build import cythonize
-    ext_modules = cythonize([Extension("parallel.parallel", ["parallel/parallel.pyx"],include_dirs = [numpy_include])])
+    ext_modules = cythonize([Extension("parallel.parallel", ["parallel/parallel.pyx"],include_dirs = [numpy_include],
+                                       extra_compile_args=['-fopenmp'], extra_link_args=['-fopenmp'])])
 else:
-    ext_modules = [Extension("parallel.parallel", ["parallel/parallel.c"],include_dirs = [numpy_include])]
+    ext_modules = [Extension("parallel.parallel", ["parallel/parallel.c"],include_dirs = [numpy_include],
+                             extra_compile_args=['-fopenmp'], extra_link_args=['-fopenmp'])]
     
 #Create a dictionary of arguments for setup
 setup_args = {'name':'parallel-test',
