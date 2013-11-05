@@ -1,6 +1,6 @@
 from parallel import Parent
 import time
-data = list(range(40000))
+data = list(range(20000))
 parent = Parent(data)
 
 t0 = time.time()
