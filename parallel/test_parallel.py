@@ -1,4 +1,4 @@
-from parallel import Parent#, ParallelParent
+from parallel import Parent
 import time
 data = list(range(20000))
 parent = Parent(data)
