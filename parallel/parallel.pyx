@@ -6,7 +6,7 @@
 
 cimport numpy as cnp
 import numpy as np
-from cython.parallel import parallel, prange
+from cython.parallel import prange
 from libc.math cimport sin
 cnp.import_array()
  
