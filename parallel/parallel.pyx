@@ -8,7 +8,6 @@ cimport numpy as cnp
 import numpy as np
 from cython.parallel import parallel, prange
 from libc.math cimport sin
-cimport openmp
 cnp.import_array()
  
 ctypedef cnp.float64_t FLOAT_t
