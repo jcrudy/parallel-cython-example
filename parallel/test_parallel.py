@@ -1,7 +1,7 @@
 from parallel import Parent
 import time
 data = list(range(20000))
-parent = Parent(data)
+parent = Parent(3, data)
 
 t0 = time.time()
 output = parent.run(False)

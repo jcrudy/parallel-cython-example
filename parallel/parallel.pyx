@@ -8,6 +8,9 @@ cimport numpy as cnp
 import numpy as np
 from cython.parallel import parallel, prange
 from libc.math cimport sin
+cimport cython
+from cpython cimport PyObject
+from libc.stdlib cimport malloc, free
 cnp.import_array()
  
 ctypedef cnp.float64_t FLOAT_t
@@ -16,47 +19,61 @@ ctypedef cnp.ulong_t INDEX_t
 ctypedef cnp.uint8_t BOOL_t
 
 cdef class Parent:
-    cdef cnp.ndarray numbers
+    cdef FLOAT_t[:] numbers
     cdef unsigned int i
-    cdef Worker worker1
-    cdef Worker worker2
+    cdef INDEX_t n_workers
+    cdef PyObject **workers
+    cdef list ref_workers #Here to maintain references on Python side
     
-    def __init__(Parent self, list numbers):
-        self.numbers = <cnp.ndarray[FLOAT_t, ndim=1]> np.array(numbers,dtype=float)
-        self.worker1 = Worker()
-        self.worker2 = Worker()
+    def __init__(Parent self, INDEX_t n_workers, list numbers):
+        cdef INDEX_t i
+        self.n_workers = n_workers
+        self.numbers = np.array(numbers,dtype=float)
+        self.workers = <PyObject **>malloc(self.n_workers*cython.sizeof(cython.pointer(PyObject)))
+        
+        #Populate worker pool
+        self.ref_workers = []
+        for i in range(self.n_workers):
+            self.ref_workers.append(Worker())
+            self.workers[i] = <PyObject*>self.ref_workers[i]
+    
+    def __dealloc__(Parent self):
+        free(self.workers)
     
     cpdef run(Parent self, bint use_parallel):
-        cdef unsigned int i
+        cdef int i
         cdef float best
         cdef int num_threads
-        cdef cnp.ndarray[FLOAT_t, ndim=1] numbers = <cnp.ndarray[FLOAT_t, ndim=1]> self.numbers
-        cdef FLOAT_t[:] buffer1 = self.numbers[:(len(numbers)//2)]
-        buffer_size1 = buffer1.shape[0]
-        cdef FLOAT_t[:] buffer2 = self.numbers[(len(numbers)//2):]
-        buffer_size2 = buffer2.shape[0]
+        
+        # Figure out the buffer start and stop positions
+        cdef INT_t * starts = <INT_t *> malloc(self.n_workers * sizeof(INDEX_t))
+        cdef INT_t * stops = <INT_t *> malloc(self.n_workers * sizeof(INDEX_t))
+        
+        step = self.numbers.shape[0] // self.n_workers
+        for i in range(self.n_workers):
+            starts[i] = i*step
+            stops[i] = min((i+1)*step,self.numbers.shape[0])
         
         # Run the workers
         if use_parallel:
             print 'parallel'
             with nogil:
-                for i in prange(2, num_threads=2):
-                    if i == 0:
-                        self.worker1.run(buffer1, buffer_size1)
-                    elif i == 1:
-                        self.worker2.run(buffer2, buffer_size2)
-              
+                for i in prange(self.n_workers, num_threads=self.n_workers):
+                    (<Worker>self.workers[i]).run(self.numbers, starts[i], stops[i])
         else:
             print 'serial'
-            self.worker1.run(buffer1, buffer_size1)
-            self.worker2.run(buffer2, buffer_size2)
+            for i in range(self.n_workers):
+                (<Worker>self.workers[i]).run(self.numbers, starts[i], stops[i])
         
         #Make sure they both ran
-        print self.worker1.output, self.worker2.output
+        print [worker.output for worker in self.ref_workers]
         
         # Choose the worker that had the best solution
-        best = min(self.worker1.output, self.worker2.output)
-            
+        best = min([worker.output for worker in self.ref_workers])
+        
+        free(starts)
+        free(stops)
+        
         return best
     
 cdef class Worker:
@@ -64,15 +81,14 @@ cdef class Worker:
     def __init__(Worker self):
         self.output = 0.0
     
-    cdef void run(Worker self, FLOAT_t[:] numbers, unsigned int buffer_size) nogil:
+    cdef void run(Worker self, FLOAT_t[:] numbers, INDEX_t start, INDEX_t stop) nogil:
         cdef unsigned int i
         cdef unsigned int j
-        cdef unsigned int n = buffer_size
         cdef FLOAT_t best
         cdef bint first = True
         cdef FLOAT_t value
-        for i in range(n):
-            for j in range(n):
+        for i in range(start, stop):
+            for j in range(start, stop):
                 value = sin(numbers[i]*numbers[j])
                 if first or (value < best):
                     best = value
