@@ -18,6 +18,8 @@ ctypedef cnp.intp_t INT_t
 ctypedef cnp.ulong_t INDEX_t
 ctypedef cnp.uint8_t BOOL_t
 
+cdef FLOAT_t MAXfloat64  = np.float64(np.inf)
+
 cdef class Parent:
     cdef FLOAT_t[:] numbers
     cdef unsigned int i
@@ -87,6 +89,8 @@ cdef class Worker:
         cdef FLOAT_t best
         cdef bint first = True
         cdef FLOAT_t value
+        
+        best = MAXfloat64
         for i in range(start, stop):
             for j in range(start, stop):
                 value = sin(numbers[i]*numbers[j])
