@@ -87,16 +87,14 @@ cdef class Worker:
         cdef unsigned int i
         cdef unsigned int j
         cdef FLOAT_t best
-        cdef bint first = True
         cdef FLOAT_t value
         
         best = MAXfloat64
         for i in range(start, stop):
             for j in range(start, stop):
                 value = sin(numbers[i]*numbers[j])
-                if first or (value < best):
+                if (value < best):
                     best = value
-                    first = False
         self.output = best
         
         
